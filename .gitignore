@@ -1,0 +1,38 @@
+# --- Dependencias ---
+node_modules/
+
+# --- Build / salida ---
+dist/
+coverage/
+*.tsbuildinfo
+
+# --- Logs ---
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# --- Entorno / secretos (NUNCA commitear) ---
+.env
+.env.*
+*.har
+*.network-response
+session.json
+cookies.json
+
+utils/
+
+# --- Config local de Claude Code ---
+.claude/
+
+# --- Caché en desarrollo ---
+.cache/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editores ---
+.idea/
+.vscode/
+*.swp

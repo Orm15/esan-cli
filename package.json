@@ -1,0 +1,43 @@
+{
+  "name": "esan-cli",
+  "version": "0.0.0",
+  "description": "CLI no oficial para consultar el campus virtual de ESAN (Pregrado) desde la terminal. Solo lectura, solo tu propia cuenta.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "esan": "./dist/bin.js"
+  },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.2"
+  },
+  "scripts": {
+    "dev": "bun run src/bin.ts",
+    "build": "bun build src/bin.ts --target=node --outdir=dist --format=esm --packages=external --banner=\"#!/usr/bin/env node\"",
+    "compile": "bun build src/bin.ts --compile --outfile dist/esan",
+    "start": "node dist/bin.js",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "keywords": ["esan", "cli", "campus-virtual", "intranet", "notas", "horario"],
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "@napi-rs/keyring": "^1.1.7",
+    "cheerio": "^1.0.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "env-paths": "^3.0.0",
+    "got": "^14.4.5",
+    "picocolors": "^1.1.1",
+    "tough-cookie": "^5.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.7.3"
+  },
+  "trustedDependencies": ["@biomejs/biome"]
+}
