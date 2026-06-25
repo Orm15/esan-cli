@@ -3,6 +3,7 @@
  * `withSession` centraliza el re-login transparente y el reintento ante sesión expirada.
  */
 import type { Deps } from "./composition-root";
+import { EsanError } from "./domain/errors";
 import type {
   Alumno,
   Curso,
@@ -11,6 +12,7 @@ import type {
   Material,
   Pago,
   Sala,
+  Sesion,
   SesionHorario,
 } from "./domain/models";
 
@@ -30,16 +32,56 @@ export async function consultarPagos(deps: Deps): Promise<Pago[]> {
   return deps.sessionManager.withSession((s) => deps.portalAcademico.getCronogramaPagos(s));
 }
 
-export async function listarCursos(deps: Deps): Promise<Curso[]> {
-  return deps.sessionManager.withSession((s) => deps.aulaVirtual.listarCursos(s));
+export async function listarCursos(deps: Deps, ciclo?: string): Promise<Curso[]> {
+  const cursos = await deps.sessionManager.withSession((s) => deps.aulaVirtual.listarCursos(s));
+  if (!ciclo) return cursos;
+  const q = ciclo.toLowerCase();
+  return cursos.filter((c) => c.ciclo.toLowerCase().includes(q));
 }
 
-export async function obtenerMaterial(deps: Deps, courseId: string): Promise<Material[]> {
-  return deps.sessionManager.withSession((s) => deps.aulaVirtual.getMaterial(s, courseId));
+export async function obtenerMaterial(deps: Deps, curso: string): Promise<Material[]> {
+  return deps.sessionManager.withSession(async (s) => {
+    const id = await resolverCursoId(deps, s, curso);
+    return deps.aulaVirtual.getMaterial(s, id);
+  });
 }
 
-export async function obtenerGrabaciones(deps: Deps, courseId: string): Promise<Grabacion[]> {
-  return deps.sessionManager.withSession((s) => deps.aulaVirtual.getGrabaciones(s, courseId));
+export async function obtenerGrabaciones(deps: Deps, curso: string): Promise<Grabacion[]> {
+  return deps.sessionManager.withSession(async (s) => {
+    const id = await resolverCursoId(deps, s, curso);
+    return deps.aulaVirtual.getGrabaciones(s, id);
+  });
+}
+
+/** Resuelve `<curso>` a un courseId de Moodle: numérico → tal cual; texto → match por nombre. */
+async function resolverCursoId(deps: Deps, sesion: Sesion, arg: string): Promise<string> {
+  const limpio = arg.trim();
+  if (/^\d+$/.test(limpio)) return limpio;
+  return matchCurso(await deps.aulaVirtual.listarCursos(sesion), limpio);
+}
+
+/**
+ * Empareja un texto contra la lista de cursos. Prioriza coincidencia exacta; si varios cursos
+ * coinciden por subcadena (p.ej. el mismo curso en distintos ciclos) NO elige uno al azar: lanza un
+ * error listando los candidatos para que el usuario desambigüe con el courseId.
+ */
+export function matchCurso(cursos: Curso[], arg: string): string {
+  const q = arg.trim().toLowerCase();
+
+  const exacto = cursos.find((c) => c.nombre.toLowerCase() === q);
+  if (exacto) return exacto.id;
+
+  const matches = cursos.filter((c) => c.nombre.toLowerCase().includes(q));
+  if (matches.length === 1) return matches[0]?.id ?? "";
+  if (matches.length === 0) {
+    throw new EsanError(
+      `No encontré un curso que coincida con "${arg}". Usa \`esan cursos\` para ver la lista o pasa el courseId.`,
+    );
+  }
+  const lista = matches.map((c) => `${c.id} ${c.nombre} (${c.ciclo})`).join("; ");
+  throw new EsanError(
+    `Varios cursos coinciden con "${arg}": ${lista}. Repite el comando con el courseId.`,
+  );
 }
 
 export async function mostrarSalas(deps: Deps, codigos: string[]): Promise<Sala[]> {

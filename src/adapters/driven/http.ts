@@ -22,9 +22,15 @@ export const ESAN = {
   notas: "https://miportal.uesan.edu.pe/GestionAcademica/Notas/NotasActuales",
   pagos: "https://miportal.uesan.edu.pe/GestionAcademica/Pagos/CronogramaPagos",
   logout: "https://miportal.uesan.edu.pe/GestionSeguridad/Acceso/CerrarSesionUsuario",
-  aulaHome: "https://aulavirtualue.uesan.edu.pe/my/",
+  aulaBase: "https://aulavirtualue.uesan.edu.pe",
+  aulaHome: "https://aulavirtualue.uesan.edu.pe/",
   landing: "https://pa.uesan.edu.pe/",
 } as const;
+
+/** URL del contenido de un curso del Aula Virtual (Moodle). */
+export function cursoUrl(courseId: string): string {
+  return `${ESAN.aulaBase}/course/view.php?id=${encodeURIComponent(courseId)}`;
+}
 
 /** Host de Mi Portal: si tras seguir redirects NO seguimos aquí, la sesión rebotó al login. */
 export const MIPORTAL_HOST = "miportal.uesan.edu.pe";
@@ -36,6 +42,11 @@ type RespLike = { statusCode: number; url: string };
 /** ¿Aterrizamos en Mi Portal con éxito? Única fuente de verdad de "sesión válida en miportal". */
 export function enMiPortal(res: RespLike): boolean {
   return res.statusCode < 400 && res.url.includes(MIPORTAL_HOST);
+}
+
+/** ¿Sesión válida en el Aula Virtual (Moodle)? Si rebota a `/login/`, la sesión murió. */
+export function enAulaVirtual(res: RespLike): boolean {
+  return res.statusCode < 400 && res.url.includes(AULA_HOST) && !res.url.includes("/login/");
 }
 
 /** El WAF de Huawei responde 403 desnudo. Se chequea en TODA respuesta (POST y GET). */

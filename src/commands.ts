@@ -212,7 +212,9 @@ export function registerCommands(program: Command, deps: Deps): void {
     .description("Lista de cursos del aula virtual")
     .option("--ciclo <ciclo>", "filtra por ciclo, p.ej. 2025-2")
     .option("--json", "salida en JSON")
-    .action((o: JsonOpts) => exec(deps, () => uc.listarCursos(deps), !!o.json));
+    .action((o: JsonOpts & { ciclo?: string }) =>
+      exec(deps, () => uc.listarCursos(deps, o.ciclo), !!o.json),
+    );
 
   program
     .command("material")
