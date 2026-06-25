@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Entry } from "@napi-rs/keyring";
 import { SESSION_FILE } from "../../config/paths";
@@ -11,7 +11,9 @@ const SERVICE = "esan-cli";
 export class KeychainCredentialStore implements CredentialStorePort {
   async isAvailable(): Promise<boolean> {
     try {
-      new Entry(SERVICE, "__probe__");
+      // Sondea el backend de verdad: getPassword devuelve null si no existe la clave, pero
+      // LANZA si no hay Secret Service / D-Bus (Linux headless/CI) → evita el falso positivo.
+      new Entry(SERVICE, "__probe__").getPassword();
       return true;
     } catch {
       return false;
@@ -50,8 +52,9 @@ export class FileSessionStore implements SessionStorePort {
   }
 
   async save(sesion: Sesion): Promise<void> {
-    await mkdir(dirname(SESSION_FILE), { recursive: true });
+    await mkdir(dirname(SESSION_FILE), { recursive: true, mode: 0o700 });
     await writeFile(SESSION_FILE, JSON.stringify(sesion), { mode: 0o600 });
+    await chmod(SESSION_FILE, 0o600); // reasegura permisos si el archivo ya existía con otros
   }
 
   async clear(): Promise<void> {

@@ -72,6 +72,7 @@ export interface Credenciales {
 
 /** Sesión persistida: el cookie jar serializado + metadatos. Nunca contiene la contraseña. */
 export interface Sesion {
+  usuario: string; // código del alumno dueño de la sesión (para reconciliar identidad)
   cookies: string; // jar serializado (tough-cookie)
   creadaEn: number; // epoch ms
   expiraEn: number | null;

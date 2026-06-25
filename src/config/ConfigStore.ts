@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { CONFIG_FILE } from "./paths";
 
@@ -22,7 +22,8 @@ export class ConfigStore {
   }
 
   async save(config: AppConfig): Promise<void> {
-    await mkdir(dirname(CONFIG_FILE), { recursive: true });
+    await mkdir(dirname(CONFIG_FILE), { recursive: true, mode: 0o700 });
     await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+    await chmod(CONFIG_FILE, 0o600); // reasegura permisos si el archivo ya existía
   }
 }

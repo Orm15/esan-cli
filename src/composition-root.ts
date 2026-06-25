@@ -9,6 +9,8 @@ import { FileSessionStore, KeychainCredentialStore } from "./adapters/driven/sto
 import { IO } from "./adapters/driving/cli/io";
 import { ConsoleOutput } from "./adapters/driving/cli/output";
 import { SessionManager } from "./application/SessionManager";
+import { resolveCredenciales } from "./application/credentials";
+import { ConfigStore } from "./config/ConfigStore";
 import type {
   AulaVirtualPort,
   AuthPort,
@@ -21,6 +23,7 @@ import type {
 export interface Deps {
   io: IO;
   output: OutputPort;
+  config: ConfigStore;
   auth: AuthPort;
   portalAcademico: PortalAcademicoPort;
   aulaVirtual: AulaVirtualPort;
@@ -30,14 +33,21 @@ export interface Deps {
 }
 
 export function buildDeps(): Deps {
+  const config = new ConfigStore();
   const auth = new EsanAuthAdapter();
   const sessions = new FileSessionStore();
   const credentials = new KeychainCredentialStore();
-  const sessionManager = new SessionManager(auth, sessions, credentials);
+  const sessionManager = new SessionManager(
+    auth,
+    sessions,
+    () => resolveCredenciales(config, credentials),
+    async () => process.env.ESAN_USER || (await config.load()).usuario,
+  );
 
   return {
     io: new IO(),
     output: new ConsoleOutput(),
+    config,
     auth,
     portalAcademico: new MiPortalScraperAdapter(),
     aulaVirtual: new MoodleScraperAdapter(),

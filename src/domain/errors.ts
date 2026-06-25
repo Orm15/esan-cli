@@ -13,10 +13,17 @@ export class NotImplementedError extends EsanError {
   }
 }
 
-/** La cookie de sesión murió (~5 min de inactividad). */
+/** La cookie de sesión murió (~5 min de inactividad). Dispara el re-login transparente. */
 export class SesionExpiradaError extends EsanError {
   constructor() {
     super("La sesión expiró. Corre `esan login`.");
+  }
+}
+
+/** No hay sesión activa ni credenciales para (re)autenticar: nunca se inició sesión. */
+export class NoAutenticadoError extends EsanError {
+  constructor() {
+    super("No hay sesión activa ni credenciales guardadas. Corre `esan login`.");
   }
 }
 
