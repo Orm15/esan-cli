@@ -37,6 +37,12 @@ export interface Curso {
   url: string;
 }
 
+/** Resumen de un ciclo para el índice navegable (cuántos cursos tiene). */
+export interface CicloResumen {
+  ciclo: string;
+  cantidad: number;
+}
+
 export type TipoMaterial = "resource" | "page" | "url" | "forum" | "assign" | "quiz" | "otro";
 
 export interface Material {

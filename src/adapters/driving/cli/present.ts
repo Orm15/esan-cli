@@ -1,6 +1,7 @@
 import pc from "picocolors";
 import type {
   Alumno,
+  CicloResumen,
   Curso,
   CursoNota,
   Grabacion,
@@ -78,6 +79,22 @@ export function printPagos(io: IO, pagos: Pago[]): void {
   );
 }
 
+/** Índice de ciclos (navegable): ciclo + nº de cursos. */
+export function printCiclos(io: IO, ciclos: CicloResumen[]): void {
+  renderTabla(
+    io,
+    [
+      { header: "Ciclo", key: "ciclo", min: 16 },
+      { header: "Cursos", key: "cantidad", max: 8, protegida: true },
+    ],
+    ciclos,
+  );
+  if (ciclos.length > 0) {
+    io.info("");
+    io.info(pc.dim("Ver cursos de un ciclo:  esan cursos --ciclo <ciclo>"));
+  }
+}
+
 export function printCursos(io: IO, cursos: Curso[]): void {
   renderTabla(
     io,
@@ -90,16 +107,35 @@ export function printCursos(io: IO, cursos: Curso[]): void {
   );
 }
 
+/** Material agrupado por sección (una tabla por sección, sin la columna de sección ni la URL). */
 export function printMaterial(io: IO, material: Material[]): void {
-  renderTabla(
-    io,
-    [
-      { header: "Tipo", key: "tipo", max: 9, protegida: true },
-      { header: "Material", key: "nombre", min: 20 },
-      { header: "Sección", key: "seccion", max: 18 },
-    ],
-    material,
-  );
+  if (material.length === 0) {
+    io.info("(sin material)");
+    return;
+  }
+  const orden: string[] = [];
+  const porSeccion = new Map<string, Material[]>();
+  for (const m of material) {
+    const sec = m.seccion || "—";
+    if (!porSeccion.has(sec)) {
+      orden.push(sec);
+      porSeccion.set(sec, []);
+    }
+    porSeccion.get(sec)?.push(m);
+  }
+  for (const seccion of orden) {
+    io.info("");
+    io.info(pc.bold(seccion));
+    io.info(
+      construirTabla(
+        [
+          { header: "Tipo", key: "tipo", max: 9, protegida: true },
+          { header: "Material", key: "nombre", min: 20 },
+        ],
+        porSeccion.get(seccion) ?? [],
+      ),
+    );
+  }
 }
 
 export function printGrabaciones(io: IO, grabaciones: Grabacion[]): void {

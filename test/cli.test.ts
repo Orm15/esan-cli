@@ -15,6 +15,7 @@ describe("cli", () => {
       "cursos",
       "material",
       "grabaciones",
+      "explorar",
       "salas",
       "password",
       "config",

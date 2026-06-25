@@ -1,6 +1,7 @@
 import * as p from "@clack/prompts";
 import type { Command } from "commander";
 import {
+  printCiclos,
   printCursos,
   printGrabaciones,
   printHorario,
@@ -11,6 +12,7 @@ import {
 } from "./adapters/driving/cli/present";
 import type { Deps } from "./composition-root";
 import { EsanError } from "./domain/errors";
+import type { Curso } from "./domain/models";
 import * as uc from "./usecases";
 
 type JsonOpts = { json?: boolean };
@@ -35,7 +37,7 @@ async function exec<T>(
   }
 }
 
-const cancelado = (valor: unknown): boolean => p.isCancel(valor);
+const cancelado = (valor: unknown): valor is symbol => p.isCancel(valor);
 
 /** Cancelación de prompt (Ctrl-C): mensaje + exit code ≠ 0 para distinguirla de un éxito. */
 function abortar(): void {
@@ -209,6 +211,105 @@ async function cmdConfigSet(deps: Deps, clave: string, valor: string): Promise<v
   deps.io.success(`config: ${clave} = ${valor}`);
 }
 
+/** `esan explorar`: navegador interactivo ciclo → curso → acción (material/grabaciones/notas). */
+async function cmdExplorar(deps: Deps): Promise<void> {
+  if (!deps.io.canPrompt()) {
+    deps.io.error(
+      "`esan explorar` necesita una terminal interactiva. Usa los comandos directos (cursos/material/grabaciones).",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  p.intro("esan · explorar");
+  const spin = p.spinner();
+  spin.start("Cargando cursos…");
+  let cursos: Curso[];
+  try {
+    cursos = await uc.listarCursos(deps);
+  } catch (err) {
+    spin.stop("No se pudieron cargar los cursos.");
+    deps.io.error(err instanceof EsanError ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  const ciclos = [...new Set(cursos.map((c) => c.ciclo))];
+  spin.stop(`${cursos.length} cursos en ${ciclos.length} ciclos`);
+
+  if (cursos.length === 0) {
+    deps.io.info("No tienes cursos en el aula virtual.");
+    p.outro("Listo.");
+    return;
+  }
+
+  let activo = true;
+  while (activo) {
+    const ciclo = await p.select({
+      message: "Elige un ciclo",
+      options: ciclos.map((c) => ({
+        value: c,
+        label: c,
+        hint: `${cursos.filter((x) => x.ciclo === c).length} cursos`,
+      })),
+    });
+    if (cancelado(ciclo)) break;
+    const delCiclo = cursos.filter((c) => c.ciclo === ciclo);
+
+    // Navegación dentro del ciclo: "volver a cursos" regresa aquí; "volver a ciclos" sale al de arriba.
+    const enCiclo = true;
+    while (enCiclo) {
+      const cursoId = await p.select({
+        message: "Elige un curso",
+        options: [
+          ...delCiclo.map((c) => ({ value: c.id, label: c.nombre })),
+          { value: "__volver", label: "← volver a ciclos" },
+        ],
+      });
+      if (cancelado(cursoId)) {
+        activo = false;
+        break;
+      }
+      if (cursoId === "__volver") break;
+
+      const curso = delCiclo.find((c) => c.id === cursoId);
+      const accion = await p.select({
+        message: curso?.nombre ?? "Acción",
+        options: [
+          { value: "material", label: "Material del curso" },
+          { value: "grabaciones", label: "Grabaciones (Zoom + clave)" },
+          { value: "notas", label: "Notas (solo del ciclo actual)" },
+          { value: "__volver", label: "← volver a cursos" },
+        ],
+      });
+      if (cancelado(accion)) {
+        activo = false;
+        break;
+      }
+      if (accion === "__volver") continue;
+
+      try {
+        if (accion === "material") {
+          printMaterial(deps.io, await uc.obtenerMaterial(deps, cursoId));
+        } else if (accion === "grabaciones") {
+          printGrabaciones(deps.io, await uc.obtenerGrabaciones(deps, cursoId));
+        } else {
+          const nucleo = (curso?.nombre ?? "").replace(/\s*\[[^\]]*\]\s*/g, " ").trim();
+          printNotas(deps.io, await uc.consultarNotas(deps, nucleo));
+        }
+      } catch (err) {
+        deps.io.error(err instanceof EsanError ? err.message : String(err));
+      }
+
+      const seguir = await p.confirm({ message: "¿Explorar otra cosa?", initialValue: true });
+      if (cancelado(seguir) || seguir !== true) {
+        activo = false;
+        break;
+      }
+    }
+  }
+  p.outro("Listo.");
+}
+
 export function registerCommands(program: Command, deps: Deps): void {
   program
     .command("login")
@@ -236,14 +337,15 @@ export function registerCommands(program: Command, deps: Deps): void {
 
   program
     .command("notas")
-    .description("Notas actuales por curso")
+    .description("Notas actuales por curso (opcional: filtra por nombre de curso)")
+    .argument("[curso]", "filtra las notas a un curso por nombre")
     .option("--json", "salida en JSON")
-    .action((o: JsonOpts) =>
+    .action((curso: string | undefined, o: JsonOpts) =>
       exec(
         deps,
-        () => uc.consultarNotas(deps),
+        () => uc.consultarNotas(deps, curso),
         !!o.json,
-        (cursos) => printNotas(deps.io, cursos),
+        (c) => printNotas(deps.io, c),
       ),
     );
 
@@ -275,16 +377,23 @@ export function registerCommands(program: Command, deps: Deps): void {
 
   program
     .command("cursos")
-    .description("Lista de cursos del aula virtual")
-    .option("--ciclo <ciclo>", "filtra por ciclo, p.ej. 2025-2")
+    .description("Índice de ciclos del aula virtual; con --ciclo lista los cursos de ese ciclo")
+    .option("--ciclo <ciclo>", "muestra los cursos de un ciclo, p.ej. 2025-2")
     .option("--json", "salida en JSON")
     .action((o: JsonOpts & { ciclo?: string }) =>
-      exec(
-        deps,
-        () => uc.listarCursos(deps, o.ciclo),
-        !!o.json,
-        (c) => printCursos(deps.io, c),
-      ),
+      o.ciclo
+        ? exec(
+            deps,
+            () => uc.listarCursos(deps, o.ciclo),
+            !!o.json,
+            (c) => printCursos(deps.io, c),
+          )
+        : exec(
+            deps,
+            () => uc.listarCiclos(deps),
+            !!o.json,
+            (c) => printCiclos(deps.io, c),
+          ),
     );
 
   program
@@ -314,6 +423,12 @@ export function registerCommands(program: Command, deps: Deps): void {
         (g) => printGrabaciones(deps.io, g),
       ),
     );
+
+  program
+    .command("explorar")
+    .alias("nav")
+    .description("Navegador interactivo: ciclo → curso → material/grabaciones/notas")
+    .action(() => cmdExplorar(deps));
 
   program
     .command("salas")

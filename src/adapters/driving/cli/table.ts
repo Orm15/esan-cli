@@ -23,7 +23,9 @@ type Calc = { col: Columna; contenido: number; natural: number; w: number };
 
 function texto(valor: unknown): string {
   if (valor === null || valor === undefined) return "";
-  return typeof valor === "object" ? JSON.stringify(valor) : String(valor);
+  const s = typeof valor === "object" ? JSON.stringify(valor) : String(valor);
+  // NFC: que `.length` coincida con el ancho visible que mide cli-table3 (evita descuadre con acentos).
+  return s.normalize("NFC");
 }
 
 function recorta(s: string, n: number): string {
@@ -53,9 +55,10 @@ function distribuir(grupo: Calc[], presupuesto: number): void {
 }
 
 /**
- * Construye una tabla que SIEMPRE cabe en `ancho`: calcula anchos a partir del contenido y, si no
- * entra, encoge SOLO las columnas no protegidas (word-wrap o truncado), dejando intactas las cortas
- * y críticas (clave, id, hora…). Devuelve el texto (sin color) o "(sin resultados)" si no hay filas.
+ * Construye una tabla que cabe en `ancho` (mientras `ancho >= nº_columnas*6 + 1`; por debajo —terminal
+ * muy angosta— degrada con word-wrap). Calcula anchos según el contenido y, si no entra, encoge SOLO
+ * las columnas no protegidas (word-wrap o truncado), dejando intactas las cortas y críticas
+ * (clave, id, hora…). Devuelve el texto (sin color) o "(sin resultados)" si no hay filas.
  */
 export function construirTabla(
   columnas: Columna[],
@@ -95,7 +98,7 @@ export function construirTabla(
     colWidths: cols.map((c) => c.w),
     wordWrap: true,
     wrapOnWordBoundary: true,
-    style: { head: [], border: [] }, // sin color → ancho visible == longitud
+    style: { head: [], border: [] }, // sin ANSI que falsee el ancho visible
   });
 
   for (const fila of filas) {

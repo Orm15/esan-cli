@@ -6,6 +6,7 @@ import type { Deps } from "./composition-root";
 import { EsanError } from "./domain/errors";
 import type {
   Alumno,
+  CicloResumen,
   Curso,
   CursoNota,
   Grabacion,
@@ -20,8 +21,13 @@ export async function consultarPerfil(deps: Deps): Promise<Alumno> {
   return deps.sessionManager.withSession((s) => deps.portalAcademico.getPerfil(s));
 }
 
-export async function consultarNotas(deps: Deps): Promise<CursoNota[]> {
-  return deps.sessionManager.withSession((s) => deps.portalAcademico.getNotasActuales(s));
+export async function consultarNotas(deps: Deps, curso?: string): Promise<CursoNota[]> {
+  const notas = await deps.sessionManager.withSession((s) =>
+    deps.portalAcademico.getNotasActuales(s),
+  );
+  if (!curso) return notas;
+  const q = curso.toLowerCase();
+  return notas.filter((c) => c.curso.toLowerCase().includes(q));
 }
 
 export async function consultarHorario(deps: Deps): Promise<SesionHorario[]> {
@@ -37,6 +43,18 @@ export async function listarCursos(deps: Deps, ciclo?: string): Promise<Curso[]>
   if (!ciclo) return cursos;
   const q = ciclo.toLowerCase();
   return cursos.filter((c) => c.ciclo.toLowerCase().includes(q));
+}
+
+/** Índice de ciclos (nombre + nº de cursos), preservando el orden del portal (más reciente primero). */
+export async function listarCiclos(deps: Deps): Promise<CicloResumen[]> {
+  const cursos = await listarCursos(deps);
+  const orden: string[] = [];
+  const conteo = new Map<string, number>();
+  for (const c of cursos) {
+    if (!conteo.has(c.ciclo)) orden.push(c.ciclo);
+    conteo.set(c.ciclo, (conteo.get(c.ciclo) ?? 0) + 1);
+  }
+  return orden.map((ciclo) => ({ ciclo, cantidad: conteo.get(ciclo) ?? 0 }));
 }
 
 export async function obtenerMaterial(deps: Deps, curso: string): Promise<Material[]> {
