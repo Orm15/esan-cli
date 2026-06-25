@@ -56,6 +56,21 @@ bun run compile          # genera ./dist/esan (específico de tu sistema operati
 > También puedes generar un bundle para Node con `bun run build` y ejecutarlo con
 > `node dist/bin.js <comando>` (requiere haber hecho `bun install` antes).
 
+### Instalar el comando `esan`
+
+Para escribir solo `esan` (sin `./dist/` ni `bun run`) hay que registrarlo en el `PATH`:
+
+```bash
+make install        # compila el binario y lo enlaza en ~/.local/bin/esan
+# o, sin make:
+bun link            # comando `esan` global que apunta al código (ideal en desarrollo)
+```
+
+Asegúrate de que `~/.local/bin` esté en tu `PATH` (en `~/.zshrc`):
+`export PATH="$HOME/.local/bin:$PATH"`. Para quitarlo: `make uninstall`.
+
+Otros atajos del `Makefile`: `make build`, `make compile`, `make test`, `make check`, `make help`.
+
 Los ejemplos de abajo usan el comando `esan` (formas **B**/**C**). Con la forma **A**,
 antepón `bun run src/bin.ts` (p. ej. `bun run src/bin.ts notas`).
 
