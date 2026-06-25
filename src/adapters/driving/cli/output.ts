@@ -9,15 +9,22 @@ export class ConsoleOutput implements OutputPort {
       return;
     }
 
-    if (Array.isArray(data) && data.length > 0 && isPlainObject(data[0])) {
-      const rows = data as Record<string, unknown>[];
-      const head = Object.keys(rows[0] as Record<string, unknown>);
-      const table = new Table({ head });
-      for (const row of rows) {
-        table.push(head.map((k) => format(row[k])));
+    if (Array.isArray(data)) {
+      if (data.length === 0) {
+        process.stdout.write("(sin resultados)\n");
+        return;
       }
-      process.stdout.write(`${table.toString()}\n`);
-      return;
+      if (isPlainObject(data[0])) {
+        const rows = data as Record<string, unknown>[];
+        // Unión de claves de TODAS las filas: un campo opcional ausente en la 1ª no pierde columna.
+        const head = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+        const table = new Table({ head });
+        for (const row of rows) {
+          table.push(head.map((k) => format(row[k])));
+        }
+        process.stdout.write(`${table.toString()}\n`);
+        return;
+      }
     }
 
     process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);

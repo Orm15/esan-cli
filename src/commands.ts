@@ -1,16 +1,26 @@
 import * as p from "@clack/prompts";
 import type { Command } from "commander";
+import { printNotas } from "./adapters/driving/cli/present";
 import type { Deps } from "./composition-root";
 import { EsanError } from "./domain/errors";
 import * as uc from "./usecases";
 
 type JsonOpts = { json?: boolean };
 
-/** Ejecuta un caso de uso y renderiza; traduce errores de dominio a mensajes claros. */
-async function exec<T>(deps: Deps, run: () => Promise<T>, json: boolean): Promise<void> {
+/**
+ * Ejecuta un caso de uso y renderiza; traduce errores de dominio a mensajes claros.
+ * `human` permite una salida a medida en TTY (si no, se usa el renderer genérico de tablas/JSON).
+ */
+async function exec<T>(
+  deps: Deps,
+  run: () => Promise<T>,
+  json: boolean,
+  human?: (data: T) => void,
+): Promise<void> {
   try {
     const data = await run();
-    deps.output.render(data, { json });
+    if (!json && human) human(data);
+    else deps.output.render(data, { json });
   } catch (err) {
     deps.io.error(err instanceof EsanError ? err.message : String(err));
     process.exitCode = 1;
@@ -176,7 +186,14 @@ export function registerCommands(program: Command, deps: Deps): void {
     .command("notas")
     .description("Notas actuales por curso")
     .option("--json", "salida en JSON")
-    .action((o: JsonOpts) => exec(deps, () => uc.consultarNotas(deps), !!o.json));
+    .action((o: JsonOpts) =>
+      exec(
+        deps,
+        () => uc.consultarNotas(deps),
+        !!o.json,
+        (cursos) => printNotas(deps.io, cursos),
+      ),
+    );
 
   program
     .command("horario")

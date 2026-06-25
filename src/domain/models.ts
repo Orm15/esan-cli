@@ -27,6 +27,7 @@ export interface SesionHorario {
   inicio: string; // "HH:mm"
   fin: string;
   aula?: string;
+  profesor?: string;
 }
 
 export interface Curso {
@@ -55,7 +56,8 @@ export interface Grabacion {
 
 export interface Pago {
   descripcion: string;
-  monto: string; // p.ej. "S/. 8500.00"
+  moneda: string; // p.ej. "S/." o "US$"
+  monto: string; // p.ej. "8500.00"
   vencimiento: string;
 }
 

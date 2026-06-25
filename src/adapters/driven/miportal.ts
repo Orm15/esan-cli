@@ -2,32 +2,31 @@ import { NotImplementedError, SesionExpiradaError } from "../../domain/errors";
 import type { Alumno, CursoNota, Pago, Sala, Sesion, SesionHorario } from "../../domain/models";
 import type { PortalAcademicoPort } from "../../domain/ports";
 import { ESAN, assertNoWaf, createClient, enMiPortal, jarFromSesion } from "./http";
-import { parsePerfil } from "./miportal-parsers";
+import { parseHorario, parseNotas, parsePagos, parsePerfil } from "./miportal-parsers";
 
 /**
  * Adapter de Mi Portal (miportal.uesan.edu.pe, ASP.NET MVC). HTTP + cheerio.
- * Fase 1: `getPerfil` (para `whoami`). Fase 2: notas, horario y pagos (RECON §6–§7).
+ * Scrapea el HTML server-rendered: perfil, notas, horario y pagos (RECON §6–§7).
  */
 export class MiPortalScraperAdapter implements PortalAcademicoPort {
   async getPerfil(sesion: Sesion): Promise<Alumno> {
-    const html = await this.fetchAutenticado(sesion, ESAN.principal);
-    return parsePerfil(html);
+    return parsePerfil(await this.fetchAutenticado(sesion, ESAN.principal));
   }
 
-  async getNotasActuales(_sesion: Sesion): Promise<CursoNota[]> {
-    throw new NotImplementedError("MiPortal.getNotasActuales (Fase 2)");
+  async getNotasActuales(sesion: Sesion): Promise<CursoNota[]> {
+    return parseNotas(await this.fetchAutenticado(sesion, ESAN.notas));
   }
 
-  async getHorario(_sesion: Sesion): Promise<SesionHorario[]> {
-    throw new NotImplementedError("MiPortal.getHorario (Fase 2)");
+  async getHorario(sesion: Sesion): Promise<SesionHorario[]> {
+    return parseHorario(await this.fetchAutenticado(sesion, ESAN.horario));
   }
 
-  async getCronogramaPagos(_sesion: Sesion): Promise<Pago[]> {
-    throw new NotImplementedError("MiPortal.getCronogramaPagos (Fase 2)");
+  async getCronogramaPagos(sesion: Sesion): Promise<Pago[]> {
+    return parsePagos(await this.fetchAutenticado(sesion, ESAN.pagos));
   }
 
   async getSalasDisponibles(_sesion: Sesion, _codigos: string[]): Promise<Sala[]> {
-    throw new NotImplementedError("MiPortal.getSalasDisponibles (Fase 4)");
+    throw new NotImplementedError("MiPortal.getSalasDisponibles (salas)");
   }
 
   /** GET autenticado: si el portal rebota fuera de Mi Portal, la sesión expiró (RECON §5). */
