@@ -1,6 +1,14 @@
 import * as p from "@clack/prompts";
 import type { Command } from "commander";
-import { printNotas } from "./adapters/driving/cli/present";
+import {
+  printCursos,
+  printGrabaciones,
+  printHorario,
+  printMaterial,
+  printNotas,
+  printPagos,
+  printPerfil,
+} from "./adapters/driving/cli/present";
 import type { Deps } from "./composition-root";
 import { EsanError } from "./domain/errors";
 import * as uc from "./usecases";
@@ -217,7 +225,14 @@ export function registerCommands(program: Command, deps: Deps): void {
     .alias("whoami")
     .description("Muestra tus datos (nombre, código, rol)")
     .option("--json", "salida en JSON")
-    .action((o: JsonOpts) => exec(deps, () => uc.consultarPerfil(deps), !!o.json));
+    .action((o: JsonOpts) =>
+      exec(
+        deps,
+        () => uc.consultarPerfil(deps),
+        !!o.json,
+        (a) => printPerfil(deps.io, a),
+      ),
+    );
 
   program
     .command("notas")
@@ -236,13 +251,27 @@ export function registerCommands(program: Command, deps: Deps): void {
     .command("horario")
     .description("Horario semanal de clases")
     .option("--json", "salida en JSON")
-    .action((o: JsonOpts) => exec(deps, () => uc.consultarHorario(deps), !!o.json));
+    .action((o: JsonOpts) =>
+      exec(
+        deps,
+        () => uc.consultarHorario(deps),
+        !!o.json,
+        (s) => printHorario(deps.io, s),
+      ),
+    );
 
   program
     .command("pagos")
     .description("Cronograma de pagos (cuotas, montos, vencimientos)")
     .option("--json", "salida en JSON")
-    .action((o: JsonOpts) => exec(deps, () => uc.consultarPagos(deps), !!o.json));
+    .action((o: JsonOpts) =>
+      exec(
+        deps,
+        () => uc.consultarPagos(deps),
+        !!o.json,
+        (p) => printPagos(deps.io, p),
+      ),
+    );
 
   program
     .command("cursos")
@@ -250,7 +279,12 @@ export function registerCommands(program: Command, deps: Deps): void {
     .option("--ciclo <ciclo>", "filtra por ciclo, p.ej. 2025-2")
     .option("--json", "salida en JSON")
     .action((o: JsonOpts & { ciclo?: string }) =>
-      exec(deps, () => uc.listarCursos(deps, o.ciclo), !!o.json),
+      exec(
+        deps,
+        () => uc.listarCursos(deps, o.ciclo),
+        !!o.json,
+        (c) => printCursos(deps.io, c),
+      ),
     );
 
   program
@@ -259,7 +293,12 @@ export function registerCommands(program: Command, deps: Deps): void {
     .argument("<curso>", "courseId o nombre del curso")
     .option("--json", "salida en JSON")
     .action((curso: string, o: JsonOpts) =>
-      exec(deps, () => uc.obtenerMaterial(deps, curso), !!o.json),
+      exec(
+        deps,
+        () => uc.obtenerMaterial(deps, curso),
+        !!o.json,
+        (m) => printMaterial(deps.io, m),
+      ),
     );
 
   program
@@ -268,7 +307,12 @@ export function registerCommands(program: Command, deps: Deps): void {
     .argument("<curso>", "courseId o nombre del curso")
     .option("--json", "salida en JSON")
     .action((curso: string, o: JsonOpts) =>
-      exec(deps, () => uc.obtenerGrabaciones(deps, curso), !!o.json),
+      exec(
+        deps,
+        () => uc.obtenerGrabaciones(deps, curso),
+        !!o.json,
+        (g) => printGrabaciones(deps.io, g),
+      ),
     );
 
   program
