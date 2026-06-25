@@ -18,15 +18,46 @@ La salida se muestra en tablas legibles o en JSON (`--json`) para integrarla en 
 
 ## Instalación
 
-Requiere [Bun](https://bun.sh) (o Node 20+ para el binario ya compilado).
+Necesitas [Bun](https://bun.sh). Clona el repositorio e instala dependencias:
 
 ```bash
+git clone https://github.com/Orm15/esan-cli.git
+cd esan-cli
 bun install
-bun run build        # genera dist/bin.js (compatible con Node)
 ```
 
-Durante el desarrollo puedes ejecutarlo sin compilar con `bun run src/bin.ts <comando>`.
-Tras `npm install -g .` (o `bun link`) el binario queda disponible como `esan`.
+## Cómo ejecutarlo
+
+Hay tres formas; elige la que prefieras.
+
+**A. Directo con Bun** (lo más rápido para probar):
+
+```bash
+bun run src/bin.ts --help
+bun run src/bin.ts login
+```
+
+**B. Como comando global `esan`:**
+
+```bash
+bun link                 # o: npm install -g .
+esan --help
+esan login
+```
+
+**C. Binario autónomo** (un solo archivo, no requiere Bun ni Node para correr):
+
+```bash
+bun run compile          # genera ./dist/esan (específico de tu sistema operativo)
+./dist/esan --help
+./dist/esan login
+```
+
+> También puedes generar un bundle para Node con `bun run build` y ejecutarlo con
+> `node dist/bin.js <comando>` (requiere haber hecho `bun install` antes).
+
+Los ejemplos de abajo usan el comando `esan` (formas **B**/**C**). Con la forma **A**,
+antepón `bun run src/bin.ts` (p. ej. `bun run src/bin.ts notas`).
 
 ## Uso
 
