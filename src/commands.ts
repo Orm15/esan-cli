@@ -164,6 +164,43 @@ async function cmdPassword(deps: Deps, accion: string): Promise<void> {
   process.exitCode = 1;
 }
 
+/** Vista plana de la config no sensible (la contraseña vive en el keychain, nunca aquí). */
+async function configPlana(deps: Deps): Promise<Record<string, unknown>> {
+  const cfg = await deps.config.load();
+  return { usuario: cfg.usuario ?? "", ...(cfg.prefs ?? {}) };
+}
+
+/** `esan config get [clave]`: muestra toda la config o el valor de una clave. */
+async function cmdConfigGet(deps: Deps, clave?: string): Promise<void> {
+  const flat = await configPlana(deps);
+  if (clave) {
+    if (!(clave in flat)) {
+      deps.io.error(`No existe la clave "${clave}".`);
+      process.exitCode = 1;
+      return;
+    }
+    deps.io.info(String(flat[clave]));
+    return;
+  }
+  for (const [k, v] of Object.entries(flat)) deps.io.info(`${k} = ${String(v)}`);
+}
+
+/** `esan config set <clave> <valor>`: ajusta una clave (usuario o una preferencia libre). */
+async function cmdConfigSet(deps: Deps, clave: string, valor: string): Promise<void> {
+  if (clave === "version") {
+    deps.io.error("`version` es de solo lectura.");
+    process.exitCode = 1;
+    return;
+  }
+  const cfg = await deps.config.load();
+  if (clave === "usuario") {
+    await deps.config.save({ ...cfg, usuario: valor });
+  } else {
+    await deps.config.save({ ...cfg, prefs: { ...(cfg.prefs ?? {}), [clave]: valor } });
+  }
+  deps.io.success(`config: ${clave} = ${valor}`);
+}
+
 export function registerCommands(program: Command, deps: Deps): void {
   program
     .command("login")
@@ -248,4 +285,19 @@ export function registerCommands(program: Command, deps: Deps): void {
     .description("Gestiona la contraseña guardada en el keychain")
     .argument("<accion>", "set | clear | status")
     .action((accion: string) => cmdPassword(deps, accion));
+
+  const config = program
+    .command("config")
+    .description("Lee o ajusta la configuración local (no sensible)");
+  config
+    .command("get")
+    .description("Muestra la configuración (o el valor de una clave)")
+    .argument("[clave]", "clave a leer")
+    .action((clave: string | undefined) => cmdConfigGet(deps, clave));
+  config
+    .command("set")
+    .description("Ajusta una clave de configuración")
+    .argument("<clave>", "clave (p.ej. usuario)")
+    .argument("<valor>", "valor")
+    .action((clave: string, valor: string) => cmdConfigSet(deps, clave, valor));
 }
